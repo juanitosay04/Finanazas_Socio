@@ -34,8 +34,7 @@ export default function Dashboard({
   // Calculations
   const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
   const totalInvestments = investments.reduce((sum, inv) => sum + (inv.shares * inv.currentPrice), 0);
-  const bankSavings = 25000000; // Mock cash in bank
-  const netWorth = bankSavings + totalInvestments - (totalExpenses * 0.2); // Simulated liabilities
+  const netWorth = (income - totalExpenses) + totalInvestments;
   
   const savingsAmount = income - totalExpenses;
   const savingsRate = income > 0 ? ((savingsAmount / income) * 100).toFixed(1) : 0;
