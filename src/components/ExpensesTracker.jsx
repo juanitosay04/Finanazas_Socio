@@ -6,11 +6,16 @@ export default function ExpensesTracker({
   expenses, 
   onAddExpense, 
   onDeleteExpense, 
+  incomes = [],
+  onAddIncome,
+  onDeleteIncome,
   obligations = [], 
   onToggleObligation, 
   onAddObligation, 
   onDeleteObligation 
 }) {
+  const [formTab, setFormTab] = useState('expense'); // 'expense' or 'income'
+  const [historyTab, setHistoryTab] = useState('expense'); // 'expense' or 'income'
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Alimentación');
@@ -76,12 +81,23 @@ export default function ExpensesTracker({
     e.preventDefault();
     if (!description || !amount) return;
 
-    onAddExpense({
-      description,
-      amount: parseFloat(amount.toString().replace(/\./g, '')) || 0,
-      category,
-      date
-    });
+    const parsedAmount = parseFloat(amount.toString().replace(/\./g, '')) || 0;
+
+    if (formTab === 'expense') {
+      onAddExpense({
+        description,
+        amount: parsedAmount,
+        category,
+        date
+      });
+    } else {
+      onAddIncome({
+        description,
+        amount: parsedAmount,
+        category: category === 'Alimentación' ? 'Trabajo Extra' : category, // Safeguard fallback
+        date
+      });
+    }
 
     // Reset form
     setDescription('');
@@ -318,7 +334,43 @@ export default function ExpensesTracker({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Form */}
           <div className="glass-card">
-            <h2>Registrar Nuevo Gasto</h2>
+            {/* Form Tab Selector */}
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', background: 'rgba(0,0,0,0.2)', padding: '0.3rem', borderRadius: '8px' }}>
+              <button 
+                type="button"
+                className="btn" 
+                onClick={() => { setFormTab('expense'); setCategory('Alimentación'); }} 
+                style={{ 
+                  flex: 1, 
+                  padding: '0.4rem', 
+                  fontSize: '0.85rem', 
+                  borderRadius: '6px', 
+                  width: 'auto',
+                  background: formTab === 'expense' ? 'var(--accent-purple)' : 'transparent', 
+                  color: formTab === 'expense' ? '#120904' : 'var(--text-secondary)'
+                }}
+              >
+                Gasto
+              </button>
+              <button 
+                type="button"
+                className="btn" 
+                onClick={() => { setFormTab('income'); setCategory('Trabajo Extra'); }} 
+                style={{ 
+                  flex: 1, 
+                  padding: '0.4rem', 
+                  fontSize: '0.85rem', 
+                  borderRadius: '6px', 
+                  width: 'auto',
+                  background: formTab === 'income' ? 'var(--accent-emerald)' : 'transparent', 
+                  color: formTab === 'income' ? '#120904' : 'var(--text-secondary)'
+                }}
+              >
+                Ingreso
+              </button>
+            </div>
+
+            <h2>{formTab === 'expense' ? 'Registrar Nuevo Gasto' : 'Registrar Nuevo Ingreso'}</h2>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Descripción</label>
@@ -326,7 +378,7 @@ export default function ExpensesTracker({
                   type="text" 
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Ej. Mercado Semanal, Gasolina, Netflix..." 
+                  placeholder={formTab === 'expense' ? "Ej. Mercado Semanal, Gasolina..." : "Ej. Factura Consultoría..."} 
                   required
                 />
               </div>
@@ -336,6 +388,7 @@ export default function ExpensesTracker({
                   <label>Monto ($ COP)</label>
                   <input 
                     type="text" 
+                    inputMode="numeric"
                     value={amount}
                     onChange={(e) => handleFormatInput(e.target.value, setAmount)}
                     placeholder="Monto" 
@@ -345,14 +398,25 @@ export default function ExpensesTracker({
                 <div className="form-group">
                   <label>Categoría</label>
                   <select value={category} onChange={(e) => setCategory(e.target.value)}>
-                    <option value="Vivienda">Vivienda</option>
-                    <option value="Alimentación">Alimentación</option>
-                    <option value="Transporte">Transporte</option>
-                    <option value="Servicios">Servicios</option>
-                    <option value="Entretenimiento">Entretenimiento</option>
-                    <option value="Seguros">Seguros</option>
-                    <option value="Inversiones">Inversiones</option>
-                    <option value="Otros">Otros</option>
+                    {formTab === 'expense' ? (
+                      <>
+                        <option value="Vivienda">Vivienda</option>
+                        <option value="Alimentación">Alimentación</option>
+                        <option value="Transporte">Transporte</option>
+                        <option value="Servicios">Servicios</option>
+                        <option value="Entretenimiento">Entretenimiento</option>
+                        <option value="Seguros">Seguros</option>
+                        <option value="Inversiones">Inversiones</option>
+                        <option value="Otros">Otros</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="Sueldo">Sueldo</option>
+                        <option value="Trabajo Extra">Trabajo Extra</option>
+                        <option value="Honorarios">Honorarios</option>
+                        <option value="Otros">Otros</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>
@@ -369,7 +433,7 @@ export default function ExpensesTracker({
 
               <button type="submit" className="btn btn-primary">
                 <Plus size={18} />
-                <span>Agregar Gasto</span>
+                <span>{formTab === 'expense' ? 'Agregar Gasto' : 'Registrar Ingreso'}</span>
               </button>
             </form>
           </div>
@@ -413,54 +477,141 @@ export default function ExpensesTracker({
 
       {/* History table */}
       <div className="glass-card" style={{ marginTop: '2rem' }}>
-        <h2>Detalle Histórico de Egresos</h2>
-        {expenses.length === 0 ? (
-          <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No hay gastos registrados en este período.</p>
-        ) : (
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Descripción</th>
-                  <th>Categoría</th>
-                  <th style={{ textAlign: 'right' }}>Monto</th>
-                  <th style={{ textAlign: 'center', width: '80px' }}>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {expenses.map((exp) => (
-                  <tr key={exp.id}>
-                    <td>{exp.date}</td>
-                    <td style={{ fontWeight: 600 }}>{exp.description}</td>
-                    <td>
-                      <span 
-                        className="badge" 
-                        style={{ 
-                          backgroundColor: `${categoriesColors[exp.category]}15`, 
-                          color: categoriesColors[exp.category] 
-                        }}
-                      >
-                        {exp.category}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 700 }}>
-                      {formatCurrency(exp.amount)}
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <button 
-                        className="btn btn-danger" 
-                        style={{ padding: '0.4rem', width: 'auto' }}
-                        onClick={() => onDeleteExpense(exp.id)}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <h2>{historyTab === 'expense' ? 'Detalle Histórico de Egresos' : 'Historial de Ingresos Registrados'}</h2>
+          
+          <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.25rem', borderRadius: '8px' }}>
+            <button 
+              type="button"
+              className="btn" 
+              onClick={() => setHistoryTab('expense')}
+              style={{ 
+                padding: '0.35rem 0.85rem', 
+                fontSize: '0.8rem', 
+                borderRadius: '6px', 
+                width: 'auto',
+                background: historyTab === 'expense' ? 'var(--accent-purple)' : 'transparent', 
+                color: historyTab === 'expense' ? '#120904' : 'var(--text-secondary)'
+              }}
+            >
+              Gastos
+            </button>
+            <button 
+              type="button"
+              className="btn" 
+              onClick={() => setHistoryTab('income')}
+              style={{ 
+                padding: '0.35rem 0.85rem', 
+                fontSize: '0.8rem', 
+                borderRadius: '6px', 
+                width: 'auto',
+                background: historyTab === 'income' ? 'var(--accent-emerald)' : 'transparent', 
+                color: historyTab === 'income' ? '#120904' : 'var(--text-secondary)'
+              }}
+            >
+              Ingresos
+            </button>
           </div>
+        </div>
+
+        {historyTab === 'expense' ? (
+          expenses.length === 0 ? (
+            <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No hay gastos registrados en este período.</p>
+          ) : (
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Descripción</th>
+                    <th>Categoría</th>
+                    <th style={{ textAlign: 'right' }}>Monto</th>
+                    <th style={{ textAlign: 'center', width: '80px' }}>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expenses.map((exp) => (
+                    <tr key={exp.id}>
+                      <td>{exp.date}</td>
+                      <td style={{ fontWeight: 600 }}>{exp.description}</td>
+                      <td>
+                        <span 
+                          className="badge" 
+                          style={{ 
+                            backgroundColor: `${categoriesColors[exp.category]}15`, 
+                            color: categoriesColors[exp.category] 
+                          }}
+                        >
+                          {exp.category}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                        {formatCurrency(exp.amount)}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button 
+                          className="btn btn-danger" 
+                          style={{ padding: '0.4rem', width: 'auto' }}
+                          onClick={() => onDeleteExpense(exp.id)}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : (
+          (!incomes || incomes.length === 0) ? (
+            <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No hay ingresos registrados en este período.</p>
+          ) : (
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Descripción</th>
+                    <th>Categoría</th>
+                    <th style={{ textAlign: 'right' }}>Monto</th>
+                    <th style={{ textAlign: 'center', width: '80px' }}>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {incomes.map((inc) => (
+                    <tr key={inc.id}>
+                      <td>{inc.date}</td>
+                      <td style={{ fontWeight: 600 }}>{inc.description}</td>
+                      <td>
+                        <span 
+                          className="badge" 
+                          style={{ 
+                            backgroundColor: 'rgba(5, 243, 162, 0.12)', 
+                            color: 'var(--accent-emerald)' 
+                          }}
+                        >
+                          {inc.category}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--accent-emerald)' }}>
+                        {formatCurrency(inc.amount)}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button 
+                          className="btn btn-danger" 
+                          style={{ padding: '0.4rem', width: 'auto' }}
+                          onClick={() => onDeleteIncome(inc.id)}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
         )}
       </div>
     </div>

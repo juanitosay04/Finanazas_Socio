@@ -10,7 +10,9 @@ export default function App() {
 
   // Global State for Finances
   const [financialData, setFinancialData] = useState({
-    income: 8800000,
+    incomes: [
+      { id: 1, description: 'Sueldo Consultoría Partner', amount: 8800000, category: 'Sueldo', date: '2026-08-05' }
+    ],
     expenses: [
       { id: 1, description: 'Hipoteca / Renta', amount: 1600000, category: 'Vivienda', date: '2026-08-01' },
       { id: 2, description: 'Mercado Carulla', amount: 480000, category: 'Alimentación', date: '2026-08-03' },
@@ -42,6 +44,78 @@ export default function App() {
       { id: 5, description: 'Servicios Públicos (Luz/Internet)', amount: 450000, category: 'Servicios', type: 'Gasto Fijo', dueDate: 'Día 25', paid: false }
     ]
   });
+
+  // Handlers for Incomes
+  const handleAddIncome = (newIncome) => {
+    const incomeWithId = {
+      ...newIncome,
+      id: Date.now()
+    };
+    
+    const transaction = {
+      id: Date.now() + 1,
+      description: newIncome.description,
+      amount: newIncome.amount,
+      category: newIncome.category,
+      type: 'income',
+      date: newIncome.date
+    };
+
+    setFinancialData((prev) => {
+      const updatedIncomes = [incomeWithId, ...prev.incomes];
+      return {
+        ...prev,
+        incomes: updatedIncomes,
+        transactions: [transaction, ...prev.transactions]
+      };
+    });
+  };
+
+  const handleDeleteIncome = (id) => {
+    setFinancialData((prev) => {
+      const incomeToDelete = prev.incomes.find(inc => inc.id === id);
+      const filteredIncomes = prev.incomes.filter((inc) => inc.id !== id);
+      
+      const filteredTransactions = prev.transactions.filter(
+        (t) => !(t.description === incomeToDelete?.description && t.amount === incomeToDelete?.amount)
+      );
+
+      return {
+        ...prev,
+        incomes: filteredIncomes,
+        transactions: filteredTransactions
+      };
+    });
+  };
+
+  const handleDeleteTransaction = (id) => {
+    setFinancialData((prev) => {
+      const tx = prev.transactions.find(t => t.id === id);
+      if (!tx) return prev;
+
+      const filteredTransactions = prev.transactions.filter(t => t.id !== id);
+      
+      let updatedExpenses = prev.expenses;
+      let updatedIncomes = prev.incomes;
+
+      if (tx.type === 'expense') {
+        updatedExpenses = prev.expenses.filter(
+          exp => !(exp.description === tx.description && exp.amount === tx.amount)
+        );
+      } else if (tx.type === 'income') {
+        updatedIncomes = prev.incomes.filter(
+          inc => !(inc.description === tx.description && inc.amount === tx.amount)
+        );
+      }
+
+      return {
+        ...prev,
+        transactions: filteredTransactions,
+        expenses: updatedExpenses,
+        incomes: updatedIncomes
+      };
+    });
+  };
 
   // Handlers for Expenses
   const handleAddExpense = (newExpense) => {
@@ -220,10 +294,17 @@ export default function App() {
         };
         updatedExpenses = [newExpense, ...prev.expenses];
       } else if (mock.type === 'income') {
-        // update overall monthly income dynamically if it's dividend/refund
+        const newIncome = {
+          id: newId + 2,
+          description: mock.desc,
+          amount: mock.amount,
+          category: mock.category,
+          date: newTransaction.date
+        };
+
         return {
           ...prev,
-          income: prev.income + mock.amount,
+          incomes: [newIncome, ...prev.incomes],
           transactions: updatedTransactions
         };
       }
@@ -247,6 +328,12 @@ export default function App() {
     downloadAnchor.remove();
   };
 
+  const totalIncome = (financialData.incomes || []).reduce((sum, inc) => sum + inc.amount, 0);
+  const financialDataWithTotals = {
+    ...financialData,
+    income: totalIncome
+  };
+
   return (
     <div className="app-container">
       {/* Aurora glow backdrops */}
@@ -259,9 +346,10 @@ export default function App() {
       <main className="main-content">
         {activeTab === 'dashboard' && (
           <Dashboard 
-            financialData={financialData} 
+            financialData={financialDataWithTotals} 
             simulateBankSync={handleSimulateBankSync}
             exportData={handleExportData}
+            onDeleteTransaction={handleDeleteTransaction}
           />
         )}
         
@@ -270,6 +358,9 @@ export default function App() {
             expenses={financialData.expenses}
             onAddExpense={handleAddExpense}
             onDeleteExpense={handleDeleteExpense}
+            incomes={financialData.incomes}
+            onAddIncome={handleAddIncome}
+            onDeleteIncome={handleDeleteIncome}
             obligations={financialData.obligations}
             onToggleObligation={handleToggleObligation}
             onAddObligation={handleAddObligation}

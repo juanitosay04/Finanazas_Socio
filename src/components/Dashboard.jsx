@@ -7,7 +7,8 @@ import {
   ArrowDownRight,
   Activity, 
   RefreshCw, 
-  Download 
+  Download,
+  Trash2
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -25,7 +26,8 @@ import {
 export default function Dashboard({ 
   financialData, 
   simulateBankSync, 
-  exportData 
+  exportData,
+  onDeleteTransaction
 }) {
   const { income, expenses, transactions, investments } = financialData;
 
@@ -250,8 +252,30 @@ export default function Dashboard({
                         <p>{t.category} • {t.date}</p>
                       </div>
                     </div>
-                    <div className={`transaction-value ${isExpense ? 'text-rose' : 'text-emerald'}`}>
-                      {isExpense ? '-' : '+'}{formatCurrency(t.amount)}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div className={`transaction-value ${isExpense ? 'text-rose' : 'text-emerald'}`} style={{ marginRight: '0.25rem' }}>
+                        {isExpense ? '-' : '+'}{formatCurrency(t.amount)}
+                      </div>
+                      {onDeleteTransaction && (
+                        <button 
+                          onClick={() => onDeleteTransaction(t.id)}
+                          style={{ 
+                            background: 'none', 
+                            border: 'none', 
+                            color: 'var(--accent-rose)', 
+                            cursor: 'pointer', 
+                            padding: '0.25rem', 
+                            display: 'flex', 
+                            alignItems: 'center',
+                            opacity: 0.7
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                          onMouseLeave={(e) => e.currentTarget.style.opacity = 0.7}
+                          title="Eliminar Transacción"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
