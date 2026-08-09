@@ -7,6 +7,7 @@ import InvestmentsTracker from './components/InvestmentsTracker';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [syncStatus, setSyncStatus] = useState('loading');
 
   const localStorageKey = 'finances_socio_data';
 
@@ -75,13 +76,24 @@ export default function App() {
     // Asynchronously push updates to Vercel KV database
     const saveToCloud = async () => {
       try {
-        await fetch('/api/finances', {
+        const res = await fetch('/api/finances', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(financialData)
         });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.warning) {
+            setSyncStatus('local');
+          } else {
+            setSyncStatus('synced');
+          }
+        } else {
+          setSyncStatus('error');
+        }
       } catch (e) {
         console.warn("Could not save to Vercel KV cloud", e);
+        setSyncStatus('error');
       }
     };
     saveToCloud();
@@ -94,21 +106,29 @@ export default function App() {
         const res = await fetch('/api/finances');
         if (res.ok) {
           const data = await res.json();
-          if (data && !data.warning && (data.incomes || data.expenses || data.investments)) {
-            const localSaved = localStorage.getItem(localStorageKey);
-            const localObj = localSaved ? JSON.parse(localSaved) : null;
-            const localTime = localObj?.updatedAt || 0;
-            const cloudTime = data.updatedAt || 0;
+          if (data && data.warning) {
+            setSyncStatus('local');
+          } else {
+            setSyncStatus('synced');
+            if (data && (data.incomes || data.expenses || data.investments)) {
+              const localSaved = localStorage.getItem(localStorageKey);
+              const localObj = localSaved ? JSON.parse(localSaved) : null;
+              const localTime = localObj?.updatedAt || 0;
+              const cloudTime = data.updatedAt || 0;
 
-            // Only update local state if the cloud state is strictly newer
-            if (cloudTime > localTime) {
-              setRawFinancialData(data);
-              localStorage.setItem(localStorageKey, JSON.stringify(data));
+              // Only update local state if the cloud state is strictly newer
+              if (cloudTime > localTime) {
+                setRawFinancialData(data);
+                localStorage.setItem(localStorageKey, JSON.stringify(data));
+              }
             }
           }
+        } else {
+          setSyncStatus('error');
         }
       } catch (e) {
         console.warn("Could not load from Vercel KV cloud", e);
+        setSyncStatus('error');
       }
     };
     loadFromCloud();
@@ -432,6 +452,7 @@ export default function App() {
             exportData={handleExportData}
             onDeleteTransaction={handleDeleteTransaction}
             clearData={handleClearData}
+            syncStatus={syncStatus}
           />
         )}
         

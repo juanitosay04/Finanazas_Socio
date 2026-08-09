@@ -573,6 +573,44 @@ tr:hover td {
   font-weight: 600;
 }
 
+.sync-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  gap: 0.3rem;
+  border: 1px solid transparent;
+  height: fit-content;
+}
+
+.sync-badge.loading {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.sync-badge.synced {
+  background: rgba(129, 178, 154, 0.1);
+  color: var(--accent-emerald);
+  border-color: rgba(129, 178, 154, 0.2);
+}
+
+.sync-badge.local {
+  background: rgba(244, 162, 97, 0.1);
+  color: var(--accent-gold);
+  border-color: rgba(244, 162, 97, 0.2);
+}
+
+.sync-badge.error {
+  background: rgba(230, 57, 70, 0.1);
+  color: var(--accent-rose);
+  border-color: rgba(230, 57, 70, 0.2);
+}
+
 /* Custom layout modules */
 .tab-pane {
   display: none;
