@@ -2,7 +2,11 @@ import pg from 'pg';
 const { Client } = pg;
 
 export default async function handler(request, response) {
-  const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  let connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+
+  if (connectionString) {
+    connectionString = connectionString.replace(/^["']|["']$/g, '').trim();
+  }
 
   if (!connectionString) {
     return response.status(200).json({ 
