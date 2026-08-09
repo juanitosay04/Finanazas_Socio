@@ -2,7 +2,7 @@ import pg from 'pg';
 const { Client } = pg;
 
 export default async function handler(request, response) {
-  let connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  let connectionString = process.env.DATABASE_URL_SOCIO || process.env.DATABASE_URL || process.env.POSTGRES_URL;
 
   if (connectionString) {
     connectionString = connectionString.replace(/^["']|["']$/g, '').trim();
@@ -10,7 +10,7 @@ export default async function handler(request, response) {
 
   if (!connectionString) {
     return response.status(200).json({ 
-      warning: "DATABASE_URL no está configurada en las variables de entorno de Vercel. Usando base local.",
+      warning: "DATABASE_URL_SOCIO no está configurada en las variables de entorno de Vercel. Usando base local.",
       result: null
     });
   }
