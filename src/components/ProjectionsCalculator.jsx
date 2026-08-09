@@ -170,7 +170,7 @@ export default function ProjectionsCalculator() {
         </div>
 
         {/* Chart Area */}
-        <div className="glass-card col-span-2" style={{ gridColumn: 'span 2' }}>
+        <div className="glass-card col-span-2">
           <h2>Crecimiento Patrimonial Proyectado</h2>
           <div style={{ width: '100%', height: 350 }}>
             <ResponsiveContainer width="100%" height="100%">

@@ -186,6 +186,10 @@ p {
   margin-bottom: 2rem;
 }
 
+.col-span-2 {
+  grid-column: span 2;
+}
+
 @media (max-width: 1200px) {
   .grid-cols-4 {
     grid-template-columns: repeat(2, 1fr);
@@ -197,6 +201,9 @@ p {
     grid-template-columns: 1fr;
     gap: 1rem;
     margin-bottom: 1.5rem;
+  }
+  .col-span-2 {
+    grid-column: span 1 / span 1 !important;
   }
 }
 

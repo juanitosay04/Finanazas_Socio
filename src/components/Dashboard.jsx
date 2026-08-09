@@ -225,7 +225,7 @@ export default function Dashboard({
       {/* Recent Transactions & Info */}
       <div className="grid-cols-3">
         {/* Transactions List */}
-        <div className="glass-card col-span-2" style={{ gridColumn: 'span 2' }}>
+        <div className="glass-card col-span-2">
           <h2>Transacciones Recientes</h2>
           <div style={{ maxHeight: '320px', overflowY: 'auto', paddingRight: '4px' }}>
             {transactions.length === 0 ? (
