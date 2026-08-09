@@ -8,6 +8,7 @@ import InvestmentsTracker from './components/InvestmentsTracker';
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [syncStatus, setSyncStatus] = useState('loading');
+  const [syncError, setSyncError] = useState('');
 
   const localStorageKey = 'finances_socio_data';
 
@@ -85,14 +86,19 @@ export default function App() {
           const data = await res.json();
           if (data && data.warning) {
             setSyncStatus('local');
+            setSyncError('');
           } else {
             setSyncStatus('synced');
+            setSyncError('');
           }
         } else {
+          const errData = await res.json().catch(() => ({}));
+          setSyncError(errData.error || `HTTP ${res.status}`);
           setSyncStatus('error');
         }
       } catch (e) {
         console.warn("Could not save to Vercel KV cloud", e);
+        setSyncError(e.message);
         setSyncStatus('error');
       }
     };
@@ -108,8 +114,10 @@ export default function App() {
           const data = await res.json();
           if (data && data.warning) {
             setSyncStatus('local');
+            setSyncError('');
           } else {
             setSyncStatus('synced');
+            setSyncError('');
             if (data && (data.incomes || data.expenses || data.investments)) {
               const localSaved = localStorage.getItem(localStorageKey);
               const localObj = localSaved ? JSON.parse(localSaved) : null;
@@ -124,10 +132,13 @@ export default function App() {
             }
           }
         } else {
+          const errData = await res.json().catch(() => ({}));
+          setSyncError(errData.error || `HTTP ${res.status}`);
           setSyncStatus('error');
         }
       } catch (e) {
         console.warn("Could not load from Vercel KV cloud", e);
+        setSyncError(e.message);
         setSyncStatus('error');
       }
     };
@@ -453,6 +464,7 @@ export default function App() {
             onDeleteTransaction={handleDeleteTransaction}
             clearData={handleClearData}
             syncStatus={syncStatus}
+            syncError={syncError}
           />
         )}
         
