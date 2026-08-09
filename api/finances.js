@@ -34,19 +34,34 @@ export default async function handler(request, response) {
 
     if (request.method === 'GET') {
       const res = await client.query('SELECT data FROM finances_store WHERE key = $1', [key]);
-      const data = res.rows[0] ? res.rows[0].data : null;
+      let finances = res.rows[0] ? res.rows[0].data : null;
+      
+      if (typeof finances === 'string') {
+        try {
+          finances = JSON.parse(finances);
+        } catch (_) {}
+      }
+      
       await client.end();
-      return response.status(200).json(data);
+      return response.status(200).json(finances);
     }
 
     if (request.method === 'POST') {
-      const body = request.body;
+      let body = request.body;
+      if (typeof body === 'string') {
+        try {
+          body = JSON.parse(body);
+        } catch (_) {}
+      }
+      
+      const jsonString = typeof body === 'object' ? JSON.stringify(body) : body;
+
       await client.query(`
         INSERT INTO finances_store (key, data, updated_at) 
         VALUES ($1, $2, CURRENT_TIMESTAMP)
         ON CONFLICT (key) 
         DO UPDATE SET data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP
-      `, [key, JSON.stringify(body)]);
+      `, [key, jsonString]);
       
       await client.end();
       return response.status(200).json({ success: true });
