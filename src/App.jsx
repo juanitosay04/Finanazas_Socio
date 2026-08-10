@@ -12,6 +12,69 @@ export default function App() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedHistoryPeriod, setSelectedHistoryPeriod] = useState(null);
 
+  // Floating custom toast alert state for Socio
+  const [activeAlert, setActiveAlert] = useState({
+    show: false,
+    message: '',
+    type: 'info'
+  });
+
+  const triggerToastAlert = (message, type) => {
+    setActiveAlert({ show: true, message, type });
+    const timer = setTimeout(() => {
+      setActiveAlert((prev) => ({ ...prev, show: false }));
+    }, 8000);
+    return () => clearTimeout(timer);
+  };
+
+  const getExpenseMessage = (newTotal) => {
+    if (newTotal < 3000000) {
+      const list = [
+        "Inversión menor registrada. Flujo de caja estable. 💼",
+        "Gasto operativo menor. Todo marcha según el plan del trimestre.",
+        "Transacción menor aprobada. Manteniendo el margen operativo. 📊",
+        "Egresos bajo control. Continuamos operando con alta eficiencia."
+      ];
+      return list[Math.floor(Math.random() * list.length)];
+    } else if (newTotal >= 3000000 && newTotal < 6000000) {
+      const list = [
+        "Atención: Aumentando el apalancamiento de egresos. ⚠️",
+        "Gasto significativo. Asegúrate de que el Retorno de Inversión (ROI) valga la pena.",
+        "El flujo de caja se está reduciendo. Mantén el ojo en la liquidez.",
+        "Cierre de caja parcial: Gastos intermedios registrados en el sistema."
+      ];
+      return list[Math.floor(Math.random() * list.length)];
+    } else if (newTotal >= 6000000 && newTotal < 8000000) {
+      const list = [
+        "¡Alerta de Margen! Acercándonos al límite presupuestario pactado. 📈",
+        "Gasto elevado. Sugerimos revisar las proyecciones de ahorro.",
+        "Presión sobre la liquidez corporativa. 🛑",
+        "Riesgo de sobrecostos detectado en el balance de este período."
+      ];
+      return list[Math.floor(Math.random() * list.length)];
+    } else {
+      const list = [
+        "¡Alarma de Quiebra Operativa! 🚨 Superamos el presupuesto base del mes.",
+        "Déficit presupuestario. Requiere inyección de capital o recorte de costos inmediato.",
+        "¡Alerta Socio VIP! Saldo mensual excedido. 🟥",
+        "Operaciones detenidas temporalmente: Límite presupuestario superado. 🛑"
+      ];
+      return list[Math.floor(Math.random() * list.length)];
+    }
+  };
+
+  const getIncomeMessage = () => {
+    const list = [
+      "¡Dividendo liquidado! 💸 Excelente flujo de caja entrante.",
+      "Ingreso de Consultoría registrado. Incrementando el valor patrimonial. 💼",
+      "¡Inyección de capital exitosa! El balance corporativo sonríe. 📈",
+      "Pago recibido. Aumentando la participación de mercado de la sociedad.",
+      "¡Fichaje exitoso! Capital ingresado con éxito. 💼✨",
+      "Balance a favor: Ingreso patrimonial registrado en el libro diario. 📊"
+    ];
+    return list[Math.floor(Math.random() * list.length)];
+  };
+
   const localStorageKey = 'finances_socio_data';
 
   // Global State for Finances
@@ -188,6 +251,8 @@ export default function App() {
         transactions: [transaction, ...prev.transactions]
       };
     });
+
+    triggerToastAlert(getIncomeMessage(), 'income');
   };
 
   const handleDeleteIncome = (id) => {
@@ -258,6 +323,10 @@ export default function App() {
       expenses: [expenseWithId, ...prev.expenses],
       transactions: [transaction, ...prev.transactions]
     }));
+
+    const currentTotal = financialData.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const newTotal = currentTotal + newExpense.amount;
+    triggerToastAlert(getExpenseMessage(newTotal), 'expense');
   };
 
   const handleDeleteExpense = (id) => {
@@ -351,6 +420,12 @@ export default function App() {
         transactions: updatedTransactions
       };
     });
+
+    if (isMarkingPaid) {
+      const currentTotal = financialData.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const newTotal = currentTotal + obligation.amount;
+      triggerToastAlert(getExpenseMessage(newTotal), 'expense');
+    }
   };
 
   const handleAddObligation = (newObl) => {
@@ -567,6 +642,21 @@ export default function App() {
       {/* Aurora glow backdrops */}
       <div className="aurora-2"></div>
       
+      {/* Floating alert toast notification */}
+      {activeAlert.show && (
+        <div className="toast-container">
+          <div className={`toast-alert ${activeAlert.type}`}>
+            <span className="toast-alert-text">{activeAlert.message}</span>
+            <button 
+              className="toast-alert-close" 
+              onClick={() => setActiveAlert((prev) => ({ ...prev, show: false }))}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Left Sidebar */}
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 

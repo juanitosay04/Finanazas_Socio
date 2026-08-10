@@ -836,3 +836,77 @@ tr:hover td {
   }
 }
 
+/* Floating Toast alert for Socio */
+.toast-container {
+  position: fixed;
+  top: 25px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  width: 92%;
+  max-width: 520px;
+  pointer-events: none;
+}
+
+.toast-alert {
+  pointer-events: auto;
+  background: rgba(7, 10, 18, 0.95);
+  border: 1px solid var(--accent-cyan);
+  box-shadow: 0 12px 35px rgba(0, 242, 254, 0.28);
+  border-radius: 16px;
+  padding: 1.2rem 1.6rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  animation: slideDownIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.toast-alert.income {
+  border-color: var(--accent-emerald);
+  box-shadow: 0 12px 35px rgba(129, 178, 154, 0.28);
+}
+
+.toast-alert.expense {
+  border-color: var(--accent-rose);
+  box-shadow: 0 12px 35px rgba(230, 57, 70, 0.28);
+}
+
+.toast-alert-text {
+  flex-grow: 1;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.toast-alert-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s ease;
+}
+
+.toast-alert-close:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+@keyframes slideDownIn {
+  from {
+    transform: translateY(-40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
