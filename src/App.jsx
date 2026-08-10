@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import ExpensesTracker from './components/ExpensesTracker';
-import ProjectionsCalculator from './components/ProjectionsCalculator';
 import InvestmentsTracker from './components/InvestmentsTracker';
 
 export default function App() {
@@ -645,10 +644,6 @@ export default function App() {
             onDeleteObligation={handleDeleteObligation}
             config={config}
           />
-        )}
-
-        {activeTab === 'projections' && (
-          <ProjectionsCalculator />
         )}
 
         {activeTab === 'investments' && (
