@@ -182,16 +182,8 @@ export default function App() {
             setSyncStatus('synced');
             setSyncError('');
             if (data && (data.incomes || data.expenses || data.investments)) {
-              const localSaved = localStorage.getItem(localStorageKey);
-              const localObj = localSaved ? JSON.parse(localSaved) : null;
-              const localTime = localObj?.updatedAt || 0;
-              const cloudTime = data.updatedAt || 0;
-
-              // Only update local state if the cloud state is strictly newer
-              if (cloudTime > localTime) {
-                setRawFinancialData(data);
-                localStorage.setItem(localStorageKey, JSON.stringify(data));
-              }
+              setRawFinancialData(data);
+              localStorage.setItem(localStorageKey, JSON.stringify(data));
             }
           }
         } else {
