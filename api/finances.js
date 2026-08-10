@@ -5,6 +5,9 @@ export default async function handler(request, response) {
   let connectionString = process.env.DATABASE_URL_SOCIO || process.env.DATABASE_URL || process.env.POSTGRES_URL;
 
   if (connectionString) {
+    // Strip prefixes like DATABASE_URL= or POSTGRES_URL=
+    connectionString = connectionString.replace(/^(DATABASE_URL|POSTGRES_URL|PRISMA_DATABASE_URL)\s*=\s*/i, '').trim();
+    // Strip surrounding quotes
     connectionString = connectionString.replace(/^["']|["']$/g, '').trim();
   }
 
