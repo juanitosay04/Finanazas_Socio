@@ -93,7 +93,9 @@ export default function App() {
       ],
       config: {
         monthlyBudget: 8800000,
-        cycleStartDay: 1
+        cycleStartDay: 1,
+        fortnight1Budget: 4400000,
+        fortnight2Budget: 4400000
       },
       updatedAt: 1
     };
@@ -104,8 +106,17 @@ export default function App() {
     if (!parsedData.config) {
       parsedData.config = {
         monthlyBudget: 8800000,
-        cycleStartDay: 1
+        cycleStartDay: 1,
+        fortnight1Budget: 4400000,
+        fortnight2Budget: 4400000
       };
+    }
+    // Migrate config without fortnightly limits
+    if (!parsedData.config.fortnight1Budget) {
+      parsedData.config.fortnight1Budget = Math.round(parsedData.config.monthlyBudget / 2) || 4400000;
+    }
+    if (!parsedData.config.fortnight2Budget) {
+      parsedData.config.fortnight2Budget = Math.round(parsedData.config.monthlyBudget / 2) || 4400000;
     }
     // Migrate old data missing savingsGoals field
     if (!parsedData.savingsGoals) {
@@ -565,7 +576,12 @@ export default function App() {
     }
   };
 
-  const config = financialData.config || { monthlyBudget: 8800000, cycleStartDay: 1 };
+  const config = {
+    monthlyBudget: financialData.config?.monthlyBudget || 8800000,
+    cycleStartDay: financialData.config?.cycleStartDay || 1,
+    fortnight1Budget: financialData.config?.fortnight1Budget || 4400000,
+    fortnight2Budget: financialData.config?.fortnight2Budget || 4400000
+  };
 
   const getPeriodRange = (startDay) => {
     const today = new Date();
@@ -900,41 +916,104 @@ export default function App() {
               <h2 style={{ marginBottom: '1.5rem', color: 'var(--accent-cyan)' }}>Ajustes del Ciclo Patrimonial</h2>
               <form onSubmit={(e) => {
                 e.preventDefault();
-                const budgetInput = document.getElementById('cfg-budget').value;
                 const cycleInput = parseInt(document.getElementById('cfg-cycle-day').value, 10);
-                const cleanBudget = parseFloat(budgetInput.replace(/\./g, '')) || 0;
+                const f1BudgetInput = document.getElementById('cfg-f1-budget').value;
+                const f2BudgetInput = document.getElementById('cfg-f2-budget').value;
+                const cleanF1Budget = parseFloat(f1BudgetInput.replace(/\./g, '')) || 0;
+                const cleanF2Budget = parseFloat(f2BudgetInput.replace(/\./g, '')) || 0;
+                const cleanBudget = cleanF1Budget + cleanF2Budget;
                 
                 setFinancialData(prev => ({
                   ...prev,
                   config: {
                     monthlyBudget: cleanBudget,
-                    cycleStartDay: cycleInput
+                    cycleStartDay: cycleInput,
+                    fortnight1Budget: cleanF1Budget,
+                    fortnight2Budget: cleanF2Budget
                   }
                 }));
                 window.alert("Configuración de Socio VIP guardada.");
               }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.25rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+                      Pago Primera Quincena (COP)
+                    </label>
+                    <input 
+                      id="cfg-f1-budget"
+                      type="text"
+                      defaultValue={formatCurrency(config.fortnight1Budget).replace('$ ', '')}
+                      onChange={(e) => {
+                        const clean = e.target.value.replace(/\D/g, '');
+                        e.target.value = clean.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                        
+                        // Update total dynamically
+                        const f2Val = parseFloat((document.getElementById('cfg-f2-budget').value || '0').replace(/\./g, '')) || 0;
+                        const sum = (parseFloat(clean) || 0) + f2Val;
+                        document.getElementById('cfg-budget').value = sum.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '8px',
+                        color: 'var(--text-primary)',
+                        fontSize: '1rem'
+                      }}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+                      Pago Segunda Quincena (COP)
+                    </label>
+                    <input 
+                      id="cfg-f2-budget"
+                      type="text"
+                      defaultValue={formatCurrency(config.fortnight2Budget).replace('$ ', '')}
+                      onChange={(e) => {
+                        const clean = e.target.value.replace(/\D/g, '');
+                        e.target.value = clean.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                        
+                        // Update total dynamically
+                        const f1Val = parseFloat((document.getElementById('cfg-f1-budget').value || '0').replace(/\./g, '')) || 0;
+                        const sum = f1Val + (parseFloat(clean) || 0);
+                        document.getElementById('cfg-budget').value = sum.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '8px',
+                        color: 'var(--text-primary)',
+                        fontSize: '1rem'
+                      }}
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div style={{ marginBottom: '1.25rem' }}>
                   <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-                    Presupuesto Mensual / Sueldo Base (COP)
+                    Presupuesto Mensual Calculado (Suma Quincenas)
                   </label>
                   <input 
                     id="cfg-budget"
                     type="text"
                     defaultValue={formatCurrency(config.monthlyBudget).replace('$ ', '')}
-                    onChange={(e) => {
-                      const clean = e.target.value.replace(/\D/g, '');
-                      e.target.value = clean.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-                    }}
+                    disabled
                     style={{
                       width: '100%',
                       padding: '0.75rem 1rem',
-                      background: 'rgba(255, 255, 255, 0.02)',
+                      background: 'rgba(255, 255, 255, 0.05)',
                       border: '1px solid rgba(255, 255, 255, 0.08)',
                       borderRadius: '8px',
-                      color: 'var(--text-primary)',
-                      fontSize: '1rem'
+                      color: 'var(--text-muted)',
+                      fontSize: '1rem',
+                      cursor: 'not-allowed'
                     }}
-                    required
                   />
                 </div>
 

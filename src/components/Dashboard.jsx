@@ -233,6 +233,10 @@ export default function Dashboard({
               </div>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Sueldo Quincenal Configurado:</span>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{formatCurrency(config?.fortnight1Budget || 4400000)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Ingresos Recibidos:</span>
                 <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>+{formatCurrency(firstFortnightIncome)}</span>
               </div>
@@ -257,6 +261,10 @@ export default function Dashboard({
                 </span>
               </div>
               
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Sueldo Quincenal Configurado:</span>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{formatCurrency(config?.fortnight2Budget || 4400000)}</span>
+              </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Ingresos Recibidos:</span>
                 <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>+{formatCurrency(secondFortnightIncome)}</span>
