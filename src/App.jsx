@@ -9,20 +9,24 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [syncStatus, setSyncStatus] = useState('loading');
   const [syncError, setSyncError] = useState('');
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [selectedHistoryPeriod, setSelectedHistoryPeriod] = useState(null);
 
   const localStorageKey = 'finances_socio_data';
 
   // Global State for Finances
   const [financialData, setRawFinancialData] = useState(() => {
     const saved = localStorage.getItem(localStorageKey);
+    let parsedData = null;
     if (saved) {
       try {
-        return JSON.parse(saved);
+        parsedData = JSON.parse(saved);
       } catch (e) {
         console.error("Failed to parse saved financial data", e);
       }
     }
-    return {
+
+    const defaultData = {
       incomes: [
         { id: 1, description: 'Sueldo Consultoría Partner', amount: 8800000, category: 'Sueldo', date: '2026-08-05' }
       ],
@@ -56,8 +60,23 @@ export default function App() {
         { id: 4, description: 'Crédito Vehículo Occidente', amount: 950000, category: 'Créditos', type: 'Crédito Vehicular', dueDate: 'Día 20', paid: false },
         { id: 5, description: 'Servicios Públicos (Luz/Internet)', amount: 450000, category: 'Servicios', type: 'Gasto Fijo', dueDate: 'Día 25', paid: false }
       ],
+      config: {
+        monthlyBudget: 8800000,
+        cycleStartDay: 1
+      },
       updatedAt: 1
     };
+
+    if (!parsedData) return defaultData;
+
+    // Migrate old data missing config field
+    if (!parsedData.config) {
+      parsedData.config = {
+        monthlyBudget: 8800000,
+        cycleStartDay: 1
+      };
+    }
+    return parsedData;
   });
 
   const setFinancialData = (updater) => {
@@ -440,10 +459,107 @@ export default function App() {
     }
   };
 
-  const totalIncome = (financialData.incomes || []).reduce((sum, inc) => sum + inc.amount, 0);
+  const config = financialData.config || { monthlyBudget: 8800000, cycleStartDay: 1 };
+
+  const getPeriodRange = (startDay) => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const day = today.getDate();
+
+    let startYear = year;
+    let startMonth = month;
+
+    if (day < startDay) {
+      startMonth = month - 1;
+    }
+
+    const startDate = new Date(startYear, startMonth, startDay);
+    const endDate = new Date(startYear, startMonth + 1, startDay - 1, 23, 59, 59);
+
+    return { startDate, endDate };
+  };
+
+  const { startDate, endDate } = getPeriodRange(config.cycleStartDay);
+
+  const isInCurrentPeriod = (dateStr) => {
+    if (!dateStr) return false;
+    const txDate = new Date(dateStr + 'T00:00:00');
+    return txDate >= startDate && txDate <= endDate;
+  };
+
+  // Filter lists for current period
+  const currentIncomes = (financialData.incomes || []).filter(inc => isInCurrentPeriod(inc.date));
+  const currentExpenses = (financialData.expenses || []).filter(exp => isInCurrentPeriod(exp.date));
+  const currentTransactions = (financialData.transactions || []).filter(tx => isInCurrentPeriod(tx.date));
+
+  const totalIncome = currentIncomes.reduce((sum, inc) => sum + inc.amount, 0);
   const financialDataWithTotals = {
     ...financialData,
+    incomes: currentIncomes,
+    expenses: currentExpenses,
+    transactions: currentTransactions,
     income: totalIncome
+  };
+
+  const getHistoricalPeriods = () => {
+    const periodsMap = {};
+    const txs = financialData.transactions || [];
+    const startDay = config.cycleStartDay;
+
+    txs.forEach(tx => {
+      const parts = tx.date.split('-');
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+
+      let pYear = year;
+      let pMonth = month;
+
+      if (day < startDay) {
+        const prev = new Date(year, month - 1, 1);
+        pYear = prev.getFullYear();
+        pMonth = prev.getMonth();
+      }
+
+      const pKey = `${pYear}-${String(pMonth + 1).padStart(2, '0')}`;
+      
+      if (!periodsMap[pKey]) {
+        const pStartDate = new Date(pYear, pMonth, startDay);
+        const pEndDate = new Date(pYear, pMonth + 1, startDay - 1);
+        
+        const opt = { day: '2-digit', month: 'short' };
+        const label = `${pStartDate.toLocaleDateString('es-ES', opt)} - ${pEndDate.toLocaleDateString('es-ES', opt)}`;
+        const name = pStartDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+        const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1);
+
+        periodsMap[pKey] = {
+          key: pKey,
+          label,
+          name: capitalizedName,
+          incomes: 0,
+          expenses: 0,
+          transactions: []
+        };
+      }
+
+      if (tx.type === 'income') {
+        periodsMap[pKey].incomes += tx.amount;
+      } else {
+        periodsMap[pKey].expenses += tx.amount;
+      }
+      periodsMap[pKey].transactions.push(tx);
+    });
+
+    return Object.values(periodsMap).sort((a, b) => b.key.localeCompare(a.key));
+  };
+
+  const formatCurrency = (val) => {
+    if (val === undefined || val === null || isNaN(val)) return '$ 0';
+    const isNegative = val < 0;
+    const absVal = Math.round(Math.abs(val));
+    const formatted = absVal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return `${isNegative ? '-' : ''}$ ${formatted}`;
   };
 
   return (
@@ -465,21 +581,23 @@ export default function App() {
             clearData={handleClearData}
             syncStatus={syncStatus}
             syncError={syncError}
+            config={config}
           />
         )}
         
         {activeTab === 'expenses' && (
           <ExpensesTracker 
-            expenses={financialData.expenses}
+            expenses={financialDataWithTotals.expenses}
             onAddExpense={handleAddExpense}
             onDeleteExpense={handleDeleteExpense}
-            incomes={financialData.incomes}
+            incomes={financialDataWithTotals.incomes}
             onAddIncome={handleAddIncome}
             onDeleteIncome={handleDeleteIncome}
             obligations={financialData.obligations}
             onToggleObligation={handleToggleObligation}
             onAddObligation={handleAddObligation}
             onDeleteObligation={handleDeleteObligation}
+            config={config}
           />
         )}
 
@@ -493,6 +611,237 @@ export default function App() {
             onAddInvestment={handleAddInvestment}
             onDeleteInvestment={handleDeleteInvestment}
           />
+        )}
+
+        {activeTab === 'history' && (
+          <div className="tab-pane active">
+            <div className="top-header">
+              <div className="header-title-area">
+                <h1>Historial de Cierres de Socio</h1>
+                <p>Consulta el balance patrimonial y desempeño de tus ciclos pasados.</p>
+              </div>
+            </div>
+
+            <div className="glass-card">
+              <div className="table-container">
+                {getHistoricalPeriods().length === 0 ? (
+                  <p style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                    No hay suficientes transacciones registradas para armar un histórico patrimonial.
+                  </p>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Período</th>
+                        <th>Rango de Fechas</th>
+                        <th>Ingresos (Sueldo/Dividendos)</th>
+                        <th>Gastos Realizados</th>
+                        <th>Ahorro Neto</th>
+                        <th>Presupuesto Base</th>
+                        <th>Desempeño</th>
+                        <th>Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {getHistoricalPeriods().map((period) => {
+                        const netSavings = period.incomes - period.expenses;
+                        const isExceeded = period.expenses > (config.monthlyBudget);
+                        return (
+                          <tr key={period.key}>
+                            <td style={{ fontWeight: 700 }}>{period.name}</td>
+                            <td style={{ color: 'var(--text-muted)' }}>{period.label}</td>
+                            <td className="text-emerald">{formatCurrency(period.incomes)}</td>
+                            <td className="text-rose">{formatCurrency(period.expenses)}</td>
+                            <td className={netSavings >= 0 ? 'text-emerald' : 'text-rose'} style={{ fontWeight: 700 }}>
+                              {formatCurrency(netSavings)}
+                            </td>
+                            <td>{formatCurrency(config.monthlyBudget)}</td>
+                            <td>
+                              <span className={`badge ${isExceeded ? 'text-rose' : 'text-emerald'}`} style={{ background: isExceeded ? 'rgba(230, 57, 70, 0.12)' : 'rgba(129, 178, 154, 0.12)' }}>
+                                {isExceeded ? "Fuera de Límite 🛑" : "Alto Desempeño 🟢"}
+                              </span>
+                            </td>
+                            <td>
+                              <button 
+                                className="btn btn-secondary" 
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', width: 'auto' }}
+                                onClick={() => {
+                                  setSelectedHistoryPeriod(period);
+                                  setShowHistoryModal(true);
+                                }}
+                              >
+                                Ver Informe
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+
+            {/* Modal para ver detalles del periodo seleccionado */}
+            {showHistoryModal && selectedHistoryPeriod && (
+              <div className="modal-overlay" style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                background: 'rgba(0, 0, 0, 0.75)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 3000,
+                backdropFilter: 'blur(5px)'
+              }}>
+                <div className="glass-card" style={{
+                  width: '90%',
+                  maxWidth: '650px',
+                  maxHeight: '80vh',
+                  overflowY: 'auto',
+                  border: '1px solid rgba(255,255,255,0.08)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
+                    <div>
+                      <h2 style={{ margin: 0 }}>Desglose de Ciclo</h2>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{selectedHistoryPeriod.name} ({selectedHistoryPeriod.label})</p>
+                    </div>
+                    <button 
+                      onClick={() => setShowHistoryModal(false)}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.5rem', cursor: 'pointer' }}
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px' }}>
+                    <div style={{ flex: 1, textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Ingresos</span>
+                      <div className="text-emerald" style={{ fontWeight: 800, fontSize: '1.25rem' }}>{formatCurrency(selectedHistoryPeriod.incomes)}</div>
+                    </div>
+                    <div style={{ flex: 1, textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.05)' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Gastos</span>
+                      <div className="text-rose" style={{ fontWeight: 800, fontSize: '1.25rem' }}>{formatCurrency(selectedHistoryPeriod.expenses)}</div>
+                    </div>
+                    <div style={{ flex: 1, textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.05)' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Ahorro Neto</span>
+                      <div className={selectedHistoryPeriod.incomes - selectedHistoryPeriod.expenses >= 0 ? 'text-emerald' : 'text-rose'} style={{ fontWeight: 800, fontSize: '1.25rem' }}>
+                        {formatCurrency(selectedHistoryPeriod.incomes - selectedHistoryPeriod.expenses)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <h3>Detalles de Transacciones</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {selectedHistoryPeriod.transactions.map((tx) => {
+                      const isExpense = tx.type === 'expense';
+                      return (
+                        <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.01)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{tx.description}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{tx.category} • {tx.date}</div>
+                          </div>
+                          <div className={isExpense ? 'text-rose' : 'text-emerald'} style={{ fontWeight: 700 }}>
+                            {isExpense ? '-' : '+'}{formatCurrency(tx.amount)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'config' && (
+          <div className="tab-pane active">
+            <div className="top-header">
+              <div className="header-title-area">
+                <h1>Configuración Patrimonial</h1>
+                <p>Personaliza tus límites presupuestarios y ciclos de cierre. 🛠️📈</p>
+              </div>
+            </div>
+            
+            <div className="glass-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+              <h2 style={{ marginBottom: '1.5rem', color: 'var(--accent-cyan)' }}>Ajustes del Ciclo Patrimonial</h2>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const budgetInput = document.getElementById('cfg-budget').value;
+                const cycleInput = parseInt(document.getElementById('cfg-cycle-day').value, 10);
+                const cleanBudget = parseFloat(budgetInput.replace(/\./g, '')) || 0;
+                
+                setFinancialData(prev => ({
+                  ...prev,
+                  config: {
+                    monthlyBudget: cleanBudget,
+                    cycleStartDay: cycleInput
+                  }
+                }));
+                window.alert("Configuración de Socio VIP guardada.");
+              }}>
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+                    Presupuesto Mensual / Sueldo Base (COP)
+                  </label>
+                  <input 
+                    id="cfg-budget"
+                    type="text"
+                    defaultValue={formatCurrency(config.monthlyBudget).replace('$ ', '')}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/\D/g, '');
+                      e.target.value = clean.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem 1rem',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      borderRadius: '8px',
+                      color: 'var(--text-primary)',
+                      fontSize: '1rem'
+                    }}
+                    required
+                  />
+                </div>
+
+                <div style={{ marginBottom: '2rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+                    Día de Inicio de Ciclo
+                  </label>
+                  <select 
+                    id="cfg-cycle-day"
+                    defaultValue={config.cycleStartDay}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem 1rem',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      borderRadius: '8px',
+                      color: 'var(--text-primary)',
+                      fontSize: '1rem'
+                    }}
+                  >
+                    {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
+                      <option key={day} value={day} style={{ background: '#0e131f', color: 'var(--text-primary)' }}>
+                        Día {day} de cada mes
+                      </option>
+                    ))}
+                  </select>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                    Tus ingresos, egresos e inversiones se agruparán en ciclos automáticos desde el día {config.cycleStartDay} de un mes hasta el día {config.cycleStartDay === 1 ? '30/31' : config.cycleStartDay - 1} del mes siguiente.
+                  </p>
+                </div>
+
+                <button className="btn btn-primary" type="submit" style={{ width: '100%' }}>
+                  Guardar Parámetros de Socio
+                </button>
+              </form>
+            </div>
+          </div>
         )}
       </main>
     </div>

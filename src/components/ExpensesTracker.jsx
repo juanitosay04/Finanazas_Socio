@@ -12,7 +12,8 @@ export default function ExpensesTracker({
   obligations = [], 
   onToggleObligation, 
   onAddObligation, 
-  onDeleteObligation 
+  onDeleteObligation,
+  config
 }) {
   const [formTab, setFormTab] = useState('expense'); // 'expense' or 'income'
   const [historyTab, setHistoryTab] = useState('expense'); // 'expense' or 'income'
@@ -30,7 +31,7 @@ export default function ExpensesTracker({
 
   // Calculations
   const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-  const budgetLimit = 5000000; // Hardcoded limit for demo
+  const budgetLimit = config?.monthlyBudget || 8800000; // Adjusted budget limit dynamically
   const budgetPercentage = Math.min((totalExpenses / budgetLimit) * 100, 100);
 
   // Obligations Calculations

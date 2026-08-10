@@ -1,5 +1,4 @@
-import React from 'react';
-import { LayoutDashboard, Receipt, LineChart, TrendingUp, Wallet } from 'lucide-react';
+import { LayoutDashboard, Receipt, LineChart, TrendingUp, Wallet, History, Settings } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab }) {
   const menuItems = [
@@ -7,6 +6,8 @@ export default function Sidebar({ activeTab, setActiveTab }) {
     { id: 'expenses', name: 'Control de Gastos', icon: Receipt },
     { id: 'projections', name: 'Proyecciones', icon: LineChart },
     { id: 'investments', name: 'Inversiones', icon: TrendingUp },
+    { id: 'history', name: 'Historial Cierres', icon: History },
+    { id: 'config', name: 'Configuración', icon: Settings },
   ];
 
   return (

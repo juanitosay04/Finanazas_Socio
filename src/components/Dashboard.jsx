@@ -29,7 +29,8 @@ export default function Dashboard({
   onDeleteTransaction,
   clearData,
   syncStatus = 'loading',
-  syncError = ''
+  syncError = '',
+  config
 }) {
   const { income, expenses, transactions, investments } = financialData;
 
@@ -157,11 +158,11 @@ export default function Dashboard({
           </div>
           <div className="metric-value">{formatCurrency(totalExpenses)}</div>
           <div className="metric-footer">
-            <span className={`trend-badge ${totalExpenses > 4000 ? 'down' : 'up'}`}>
-              {totalExpenses > 4000 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-              {totalExpenses > 4000 ? '+12.4%' : '-4.2%'}
+            <span className={`trend-badge ${totalExpenses > (config?.monthlyBudget || 8800000) * 0.8 ? 'down' : 'up'}`}>
+              {totalExpenses > (config?.monthlyBudget || 8800000) * 0.8 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+              {totalExpenses > (config?.monthlyBudget || 8800000) * 0.8 ? 'Alto Flujo' : 'Bajo Control'}
             </span>
-            <span>vs mes anterior</span>
+            <span>de {formatCurrency(config?.monthlyBudget || 8800000)}</span>
           </div>
         </div>
 
