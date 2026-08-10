@@ -1,9 +1,10 @@
-import { LayoutDashboard, Receipt, TrendingUp, Wallet, History, Settings } from 'lucide-react';
+import { LayoutDashboard, Receipt, Target, TrendingUp, Wallet, History, Settings } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab }) {
   const menuItems = [
     { id: 'dashboard', name: 'Resumen General', icon: LayoutDashboard },
     { id: 'expenses', name: 'Control de Gastos', icon: Receipt },
+    { id: 'goals', name: 'Bolsillos de Ahorro', icon: Target },
     { id: 'investments', name: 'Inversiones', icon: TrendingUp },
     { id: 'history', name: 'Historial Cierres', icon: History },
     { id: 'config', name: 'Configuración', icon: Settings },
