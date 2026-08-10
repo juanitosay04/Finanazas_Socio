@@ -42,6 +42,46 @@ export default function Dashboard({
   const savingsAmount = income - totalExpenses;
   const savingsRate = income > 0 ? ((savingsAmount / income) * 100).toFixed(1) : 0;
 
+  // Dynamic Fortnightly Calculations for Current Month (based on current transactions list)
+  const today = new Date();
+  const currentMonthStr = today.toISOString().substring(0, 7); // "YYYY-MM"
+  
+  // Filter current month transactions
+  const currentMonthTransactions = transactions.filter(t => t.date && t.date.startsWith(currentMonthStr));
+  
+  const firstFortnightTrans = currentMonthTransactions.filter(t => {
+    const day = parseInt(t.date.split('-')[2]);
+    return day <= 15;
+  });
+  
+  const secondFortnightTrans = currentMonthTransactions.filter(t => {
+    const day = parseInt(t.date.split('-')[2]);
+    return day > 15;
+  });
+
+  // Totals for 1st Fortnight
+  const firstFortnightIncome = firstFortnightTrans.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+  const firstFortnightExpenses = firstFortnightTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+  const firstFortnightNet = firstFortnightIncome - firstFortnightExpenses;
+
+  // Totals for 2nd Fortnight
+  const secondFortnightIncome = secondFortnightTrans.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+  const secondFortnightExpenses = secondFortnightTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+  const secondFortnightNet = secondFortnightIncome - secondFortnightExpenses;
+
+  const fortnightlyChartData = [
+    {
+      name: '1ra Quincena (Días 1-15)',
+      Ingresos: firstFortnightIncome,
+      Gastos: firstFortnightExpenses
+    },
+    {
+      name: '2da Quincena (Días 16-Fin)',
+      Ingresos: secondFortnightIncome,
+      Gastos: secondFortnightExpenses
+    }
+  ];
+
   // Format currency helper
   const formatCurrency = (val) => {
     if (val === undefined || val === null || isNaN(val)) return '$ 0';
@@ -166,6 +206,92 @@ export default function Dashboard({
             </span>
             <span>del ingreso total</span>
           </div>
+        </div>
+      </div>
+
+      {/* Balance por Quincenas */}
+      <div className="glass-card" style={{ marginBottom: '2rem', marginTop: '2rem' }}>
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <Activity size={20} className="text-purple" />
+          Balance Quincenal ({today.toLocaleString('es-ES', { month: 'long' })})
+        </h2>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+          Visualiza el flujo de caja e ingresos de tu sueldo distribuidos por quincenas para un mejor control táctico.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', alignItems: 'center' }}>
+          
+          {/* Fortnights Data Display */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* 1ra Quincena */}
+            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '12px', padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)' }}>1ra Quincena (Días 1 al 15)</span>
+                <span style={{ fontSize: '0.75rem', padding: '0.15rem 0.5rem', borderRadius: '12px', background: 'rgba(110,106,130,0.15)', color: 'var(--text-secondary)' }}>
+                  {firstFortnightTrans.length} transacciones
+                </span>
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Ingresos Recibidos:</span>
+                <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>+{formatCurrency(firstFortnightIncome)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Gastos Realizados:</span>
+                <span style={{ color: 'var(--accent-rose)', fontWeight: 700 }}>-{formatCurrency(firstFortnightExpenses)}</span>
+              </div>
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '0.5rem', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', fontWeight: 800 }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Balance Neto:</span>
+                <span style={{ color: firstFortnightNet >= 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)' }}>
+                  {firstFortnightNet >= 0 ? '+' : ''}{formatCurrency(firstFortnightNet)}
+                </span>
+              </div>
+            </div>
+
+            {/* 2da Quincena */}
+            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '12px', padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)' }}>2da Quincena (Días 16 al Fin)</span>
+                <span style={{ fontSize: '0.75rem', padding: '0.15rem 0.5rem', borderRadius: '12px', background: 'rgba(110,106,130,0.15)', color: 'var(--text-secondary)' }}>
+                  {secondFortnightTrans.length} transacciones
+                </span>
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Ingresos Recibidos:</span>
+                <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>+{formatCurrency(secondFortnightIncome)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Gastos Realizados:</span>
+                <span style={{ color: 'var(--accent-rose)', fontWeight: 700 }}>-{formatCurrency(secondFortnightExpenses)}</span>
+              </div>
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '0.5rem', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', fontWeight: 800 }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Balance Neto:</span>
+                <span style={{ color: secondFortnightNet >= 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)' }}>
+                  {secondFortnightNet >= 0 ? '+' : ''}{formatCurrency(secondFortnightNet)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bar Chart comparing Fortnights */}
+          <div style={{ width: '100%', height: 220 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={fortnightlyChartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="name" stroke="#6e6a82" fontSize={11} />
+                <YAxis stroke="#6e6a82" fontSize={11} tickFormatter={(val) => `$ ${(val / 1000).toFixed(0)}k`} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#07050d', borderColor: 'rgba(255,255,255,0.1)' }}
+                  formatter={(value) => formatCurrency(value)}
+                />
+                <Legend verticalAlign="top" height={36} iconType="circle" />
+                <Bar dataKey="Ingresos" fill="#00f5a0" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Gastos" fill="#ff007f" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
         </div>
       </div>
 
