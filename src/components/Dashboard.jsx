@@ -92,22 +92,6 @@ export default function Dashboard({
           </div>
           <p>Visión global del patrimonio, control de flujo de caja e inversiones.</p>
         </div>
-        <div className="header-actions">
-          <button className="btn btn-secondary" onClick={simulateBankSync} style={{ width: 'auto' }}>
-            <RefreshCw size={16} />
-            <span>Simular Sincronización</span>
-          </button>
-          <button className="btn btn-primary" onClick={exportData} style={{ width: 'auto' }}>
-            <Download size={16} />
-            <span>Exportar JSON</span>
-          </button>
-          {clearData && (
-            <button className="btn btn-danger" onClick={clearData} style={{ width: 'auto', background: '#d90429', color: '#fff' }}>
-              <Trash2 size={16} />
-              <span>Limpiar Demostración</span>
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Metrics Cards */}
