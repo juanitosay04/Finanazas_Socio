@@ -77,6 +77,19 @@ export default async function handler(request, response) {
     try {
       await client.end();
     } catch (_) {}
-    return response.status(500).json({ error: e.message });
+
+    let debugUri = 'undefined';
+    if (connectionString) {
+      try {
+        // Attempt to parse to see hostname
+        const urlStr = connectionString.includes('://') ? connectionString : `postgres://${connectionString}`;
+        const parsed = new URL(urlStr);
+        debugUri = `${parsed.protocol}//***:***@${parsed.hostname}:${parsed.port || 'default'}${parsed.pathname}`;
+      } catch (err) {
+        debugUri = connectionString.substring(0, Math.min(connectionString.length, 25)) + '... (invalid format)';
+      }
+    }
+
+    return response.status(500).json({ error: `${e.message} (URI Debug: ${debugUri})` });
   }
 }
