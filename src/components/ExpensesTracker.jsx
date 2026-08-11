@@ -4,6 +4,7 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recha
 
 export default function ExpensesTracker({ 
   expenses, 
+  allExpenses = [],
   onAddExpense, 
   onDeleteExpense, 
   incomes = [],
@@ -263,7 +264,7 @@ export default function ExpensesTracker({
         ) : (
           <div className="grid-cols-2" style={{ gap: '1rem', marginTop: '1rem' }}>
             {creditCards.map(card => {
-              const cardExpenses = expenses.filter(exp => exp.cardId === card.id || exp.cardName === card.name);
+              const cardExpenses = allExpenses.filter(exp => exp.cardId === card.id || exp.cardName === card.name);
               const cardSpent = cardExpenses.reduce((sum, exp) => sum + exp.amount, 0);
               const availableLimit = Math.max(0, card.limit - cardSpent);
               const { corteDate, pagoDate, daysToCorte, daysToPago, showCorteAlert, showPagoAlert } = getCardDatesAndAlerts(card.corteDay, card.pagoDay);

@@ -258,24 +258,43 @@ export default function App() {
     });
   };
 
+  const addMonthsStr = (dateStr, months) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1 + months, day);
+    const targetMonth = (month - 1 + months) % 12;
+    const expectedMonth = targetMonth < 0 ? targetMonth + 12 : targetMonth;
+    if (date.getMonth() !== expectedMonth) {
+      date.setDate(0);
+    }
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
   const handleDeleteTransaction = (id) => {
     setFinancialData((prev) => {
       const tx = prev.transactions.find(t => t.id === id);
       if (!tx) return prev;
 
-      const filteredTransactions = prev.transactions.filter(t => t.id !== id);
-      
+      let filteredTransactions;
       let updatedExpenses = prev.expenses;
       let updatedIncomes = prev.incomes;
 
-      if (tx.type === 'expense') {
-        updatedExpenses = prev.expenses.filter(
-          exp => !(exp.description === tx.description && exp.amount === tx.amount)
-        );
-      } else if (tx.type === 'income') {
-        updatedIncomes = prev.incomes.filter(
-          inc => !(inc.description === tx.description && inc.amount === tx.amount)
-        );
+      if (tx.installmentGroupId && window.confirm("Esta transacción es parte de una compra a cuotas con tarjeta de crédito. ¿Deseas eliminar TODAS las cuotas asociadas a esta compra?")) {
+        filteredTransactions = prev.transactions.filter(t => t.installmentGroupId !== tx.installmentGroupId);
+        updatedExpenses = prev.expenses.filter(exp => exp.installmentGroupId !== tx.installmentGroupId);
+      } else {
+        filteredTransactions = prev.transactions.filter(t => t.id !== id);
+        if (tx.type === 'expense') {
+          updatedExpenses = prev.expenses.filter(
+            exp => !(exp.description === tx.description && exp.amount === tx.amount && exp.date === tx.date)
+          );
+        } else if (tx.type === 'income') {
+          updatedIncomes = prev.incomes.filter(
+            inc => !(inc.description === tx.description && inc.amount === tx.amount && inc.date === tx.date)
+          );
+        }
       }
 
       return {
@@ -289,39 +308,89 @@ export default function App() {
 
   // Handlers for Expenses
   const handleAddExpense = (newExpense) => {
-    const expenseWithId = {
-      ...newExpense,
-      id: Date.now()
-    };
-    
-    // Also create a transaction representation
-    const transaction = {
-      id: Date.now() + 1,
-      description: newExpense.description,
-      amount: newExpense.amount,
-      category: newExpense.category,
-      type: 'expense',
-      date: newExpense.date
-    };
+    if (newExpense.isCreditCard && newExpense.installments > 1) {
+      const n = newExpense.installments;
+      const installmentAmount = Math.round(newExpense.amount / n);
+      const groupId = `cc_${Date.now()}`;
+      
+      const newExpenses = [];
+      const newTransactions = [];
+      
+      for (let i = 0; i < n; i++) {
+        const instDate = addMonthsStr(newExpense.date, i);
+        const instDesc = `${newExpense.description} (Cuota ${i + 1}/${n})`;
+        const instAmount = i === n - 1 ? newExpense.amount - (installmentAmount * (n - 1)) : installmentAmount;
+        
+        newExpenses.push({
+          ...newExpense,
+          id: Date.now() + i * 10,
+          description: instDesc,
+          amount: instAmount,
+          date: instDate,
+          installmentGroupId: groupId,
+          installmentNumber: i + 1
+        });
+        
+        newTransactions.push({
+          id: Date.now() + i * 10 + 1,
+          description: instDesc,
+          amount: instAmount,
+          category: newExpense.category,
+          type: 'expense',
+          date: instDate,
+          installmentGroupId: groupId
+        });
+      }
+      
+      setFinancialData((prev) => ({
+        ...prev,
+        expenses: [...newExpenses, ...prev.expenses],
+        transactions: [...newTransactions, ...prev.transactions]
+      }));
+      
+      triggerToastAlert(getExpenseMessage(newExpenses[0].amount), 'expense');
+    } else {
+      const expenseWithId = {
+        ...newExpense,
+        id: Date.now()
+      };
+      
+      const transaction = {
+        id: Date.now() + 1,
+        description: newExpense.description,
+        amount: newExpense.amount,
+        category: newExpense.category,
+        type: 'expense',
+        date: newExpense.date
+      };
 
-    setFinancialData((prev) => ({
-      ...prev,
-      expenses: [expenseWithId, ...prev.expenses],
-      transactions: [transaction, ...prev.transactions]
-    }));
+      setFinancialData((prev) => ({
+        ...prev,
+        expenses: [expenseWithId, ...prev.expenses],
+        transactions: [transaction, ...prev.transactions]
+      }));
 
-    triggerToastAlert(getExpenseMessage(newExpense.amount), 'expense');
+      triggerToastAlert(getExpenseMessage(newExpense.amount), 'expense');
+    }
   };
 
   const handleDeleteExpense = (id) => {
     setFinancialData((prev) => {
       const expenseToDelete = prev.expenses.find(exp => exp.id === id);
-      const filteredExpenses = prev.expenses.filter((exp) => exp.id !== id);
-      
-      // Also filter out of transactions if found
-      const filteredTransactions = prev.transactions.filter(
-        (t) => !(t.description === expenseToDelete?.description && t.amount === expenseToDelete?.amount)
-      );
+      if (!expenseToDelete) return prev;
+
+      let filteredExpenses;
+      let filteredTransactions;
+
+      if (expenseToDelete.installmentGroupId && window.confirm("Este gasto es parte de una compra a cuotas con tarjeta de crédito. ¿Deseas eliminar TODAS las cuotas asociadas a esta compra?")) {
+        filteredExpenses = prev.expenses.filter((exp) => exp.installmentGroupId !== expenseToDelete.installmentGroupId);
+        filteredTransactions = prev.transactions.filter((t) => t.installmentGroupId !== expenseToDelete.installmentGroupId);
+      } else {
+        filteredExpenses = prev.expenses.filter((exp) => exp.id !== id);
+        filteredTransactions = prev.transactions.filter(
+          (t) => !(t.description === expenseToDelete.description && t.amount === expenseToDelete.amount && t.date === expenseToDelete.date)
+        );
+      }
 
       return {
         ...prev,
@@ -725,6 +794,7 @@ export default function App() {
         {activeTab === 'expenses' && (
           <ExpensesTracker 
             expenses={financialDataWithTotals.expenses}
+            allExpenses={financialData.expenses}
             onAddExpense={handleAddExpense}
             onDeleteExpense={handleDeleteExpense}
             incomes={financialDataWithTotals.incomes}
